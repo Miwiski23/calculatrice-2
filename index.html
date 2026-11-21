@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#001a38">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>html{background:#06264d;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}[hidden]{display:none!important}</style>
+<title>Calculatrice de bureau</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;500&family=Roboto+Mono:wght@400;500&family=Roboto+Condensed:wght@700&display=swap">
+<style>
+/* Layout: replica of the Office Calculator phone screen. Navy app bar, white tape, sage status strip, white result line, flat coloured keys. Single dark-navy look by design. */
+:root {
+  color-scheme: dark;
+  --bg: #06264d;
+  --bar: #001a38;
+  --paper: #ffffff;
+  --paper-ink: #111111;
+  --strip: #b8c8bc;
+  --strip-dim: #8a9a90;
+  --strip-ink: #111111;
+  --neg: #c62828;
+  --k-num: #dcdcdc; --k-plus: #a5d98c; --k-minus: #dc9088; --k-mul: #93dedd;
+  --k-clear: #dcd9a2; --k-eq: #dca86e; --k-tx: #8fd0ae; --k-par: #aaaaaa; --k-mem: #b9c6d6;
+  --k-ink: #000000;
+  --sheet: #0b2f5c; --ink: #eaf1fa; --muted: #9fb4cf; --line: rgba(234, 241, 250, 0.2); --accent: #62a8e6;
+  --f-slab: "Roboto Slab", Georgia, serif;
+  --f-mono: "Roboto Mono", ui-monospace, Menlo, monospace;
+  --f-key: "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  --kh: 62px;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-slab);
+  padding-block: 0 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.app { max-width: 460px; margin: 0 auto; }
+.bar { display: flex; align-items: center; justify-content: space-between; height: 56px; margin-inline: -16px; padding-inline: 16px; background: var(--bar); }
+.bar h1 { margin: 0; font: 400 1.5rem var(--f-slab); }
+.menu { appearance: none; border: 0; background: none; color: var(--ink); width: 44px; height: 44px; font: 700 1.6rem var(--f-key); cursor: pointer; border-radius: 22px; }
+.menu:hover { background: rgba(255,255,255,0.1); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.tape { background: var(--paper); color: var(--paper-ink); height: clamp(150px, 31vh, 330px); overflow-y: auto; padding: 8px 10px; font: 400 0.95rem/1.55 var(--f-mono); font-variant-numeric: tabular-nums; margin-inline: -16px; padding-inline: 16px; }
+.row { display: grid; grid-template-columns: 4.6em minmax(0, 1fr) 1.4em; gap: 6px; align-items: baseline; }
+.row .idx { color: #6b6b6b; font-size: 0.8rem; white-space: nowrap; }
+.row .num { text-align: right; overflow-wrap: anywhere; }
+.row .op { font-weight: 500; }
+.row.total { border-top: 1px solid #999; margin-top: 2px; font-weight: 500; }
+.row.note { color: #6b6b6b; font-style: italic; }
+.neg { color: var(--neg); }
+.status { display: flex; flex-wrap: wrap; gap: 2px 14px; justify-content: space-between; padding: 4px 16px; margin-inline: -16px; background: var(--strip); color: var(--strip-ink); font: 500 0.9rem var(--f-slab); border-top: 2px solid #0a2a50; border-bottom: 1px solid #8a9a90; }
+.status span { color: var(--strip-dim); }
+.status span.on { color: var(--strip-ink); font-weight: 500; }
+.display { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 2px 16px 4px; margin-inline: -16px; background: var(--paper); color: var(--paper-ink); min-height: 82px; }
+.pend { font: 500 1.2rem var(--f-mono); color: #777; min-width: 2.4em; }
+.value { flex: 1; min-width: 0; text-align: right; font: 400 3.6rem/1.15 var(--f-slab); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+.keys { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; padding-top: 8px; position: relative; }
+.keys button {
+  appearance: none; border: 0; height: var(--kh); border-radius: 4px; color: var(--k-ink); background: var(--k-num);
+  font: 700 2.1rem var(--f-key); cursor: pointer; box-shadow: 0 3px 0 rgba(0,0,0,0.45);
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.keys button:active { transform: translateY(3px); box-shadow: none; }
+.keys .k-plus { background: var(--k-plus); } .keys .k-minus, .keys .k-pm { background: var(--k-minus); }
+.keys .k-mul { background: var(--k-mul); } .keys .k-clear { background: var(--k-clear); }
+.keys .k-eq { background: var(--k-eq); } .keys .k-tx { background: var(--k-tx); }
+.keys .k-par { background: var(--k-par); } .keys .k-mem { background: var(--k-mem); }
+.keys .k-tx, .keys .k-pm { font-size: 1.9rem; }
+.keys .k-mem { font-size: 1.6rem; }
+.arrow { position: absolute; right: -14px; top: 8px; width: 22px; height: var(--kh); border: 0; background: none; color: #fff; font-size: 1.4rem; opacity: 0.85; padding: 0; box-shadow: none !important; }
+.arrow:hover { opacity: 1; }
+.mem-row { display: contents; }
+#overlay { position: fixed; inset: 0; background: rgba(0, 8, 20, 0.6); display: flex; align-items: flex-end; justify-content: center; z-index: 20; }
+.sheet {
+  width: 100%; max-width: 480px; max-height: 90%; overflow-y: auto; background: var(--sheet); color: var(--ink);
+  border-radius: 16px 16px 0 0; padding: 18px max(16px, env(safe-area-inset-left, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  font-family: var(--f-key);
+}
+.sheet h2 { margin: 0 0 4px; font: 500 1.3rem var(--f-slab); }
+.sheet h3 { margin: 18px 0 8px; font: 700 0.8rem var(--f-key); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.field { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.field label { font-size: 1.05rem; min-width: 0; }
+.field small { display: block; color: var(--muted); font-size: 0.85rem; }
+.field select, .field input[type="number"] { font: 500 1.05rem var(--f-key); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; height: 38px; padding: 0 8px; max-width: 55%; }
+.field input[type="number"] { width: 6em; text-align: right; }
+.field input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.actions button, .done { appearance: none; border: 1px solid var(--line); background: var(--bg); color: var(--ink); height: 40px; padding: 0 14px; border-radius: 8px; font: 700 1rem var(--f-key); cursor: pointer; }
+.done { background: var(--accent); color: #04162e; border-color: transparent; width: 100%; margin-top: 18px; height: 46px; font-size: 1.1rem; }
+@media (prefers-reduced-motion: reduce) { .keys button { transition: none; } }
+</style>
+
+</head>
+<body>
+<div class="app">
+  <div class="bar">
+    <h1>Office Calculator</h1>
+    <button class="menu" id="openSettings" type="button" aria-label="Paramètres" aria-haspopup="dialog">⋮</button>
+  </div>
+  <div class="tape" id="tape" aria-label="Ruban de calcul"></div>
+  <div class="status" id="status"></div>
+  <div class="display"><span class="pend" id="pend"></span><span class="value" id="value" aria-live="polite">0,00</span></div>
+
+  <div class="keys" id="keys">
+    <div class="mem-row" id="rowA">
+      <button class="k-pm" data-k="pm" type="button" aria-label="Changer le signe">±</button>
+      <button class="k-tx" data-k="tx+" type="button">+TX</button>
+      <button class="k-tx" data-k="tx-" type="button">-TX</button>
+      <button class="k-par" data-k="(" type="button">(</button>
+      <button class="k-par" data-k=")" type="button">)</button>
+    </div>
+    <div class="mem-row" id="rowB" hidden>
+      <button class="k-mem" data-k="mc" type="button">MC</button>
+      <button class="k-mem" data-k="mr" type="button">MR</button>
+      <button class="k-mem" data-k="m+" type="button">M+</button>
+      <button class="k-mem" data-k="m-" type="button">M−</button>
+      <button class="k-clear" data-k="ac" type="button">AC</button>
+    </div>
+    <button class="arrow" id="arrow" type="button" aria-label="Autres touches">▶</button>
+
+    <button data-k="7" type="button">7</button>
+    <button data-k="8" type="button">8</button>
+    <button data-k="9" type="button">9</button>
+    <button class="k-clear" data-k="ce" type="button">CE</button>
+    <button class="k-mul" data-k="*" type="button" aria-label="Multiplier">×</button>
+
+    <button data-k="4" type="button">4</button>
+    <button data-k="5" type="button">5</button>
+    <button data-k="6" type="button">6</button>
+    <button class="k-minus" data-k="-" type="button" aria-label="Soustraire">−</button>
+    <button class="k-mul" data-k="/" type="button" aria-label="Diviser">÷</button>
+
+    <button data-k="1" type="button">1</button>
+    <button data-k="2" type="button">2</button>
+    <button data-k="3" type="button">3</button>
+    <button class="k-plus" data-k="+" type="button">+</button>
+    <button class="k-clear" data-k="bs" type="button" aria-label="Retour arrière">⌫</button>
+
+    <button data-k="0" type="button">0</button>
+    <button data-k="00" type="button">00</button>
+    <button data-k="." type="button" id="decKey">,</button>
+    <button class="k-eq" data-k="=" type="button">=</button>
+    <button class="k-eq" data-k="%" type="button">%=</button>
+  </div>
+</div>
+
+<div id="overlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <h2 id="setTitle">Paramètres</h2>
+
+    <h3>Calcul</h3>
+    <div class="field"><label for="sTax">Taux de taxe (%)<small>Utilisé par +TX et -TX</small></label><input type="number" id="sTax" step="0.1" min="0" max="100"></div>
+    <div class="field"><label for="sOrder">Ordre des opérations</label>
+      <select id="sOrder"><option value="alg">× ÷ avant + −</option><option value="chain">De gauche à droite</option></select></div>
+    <div class="field"><label for="sDec">Décimales</label>
+      <select id="sDec"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="F">Flottant</option></select></div>
+    <div class="field"><label for="sRound">Mode d'arrondi</label>
+      <select id="sRound"><option value="up">Supérieur (Up)</option><option value="std">Standard (5/4)</option><option value="down">Inférieur (Down)</option></select></div>
+
+    <h3>Affichage</h3>
+    <div class="field"><label for="sDsep">Séparateur décimal</label>
+      <select id="sDsep"><option value=",">Virgule</option><option value=".">Point</option></select></div>
+    <div class="field"><label for="sThou">Séparateur de milliers</label>
+      <select id="sThou"><option value="none">Aucun</option><option value="space">Espace</option><option value="apos">Apostrophe ’</option></select></div>
+    <div class="field"><label for="sNeg">Nombres négatifs en rouge</label><input type="checkbox" id="sNeg"></div>
+    <div class="field"><label for="sSize">Taille des touches</label>
+      <select id="sSize"><option value="compact">Compacte</option><option value="normal">Normale</option><option value="large">Grande</option></select></div>
+
+    <h3>Effacement</h3>
+    <div class="field"><label for="sCeDbl">Double appui sur CE = AC<small>Efface tout le calcul en cours</small></label><input type="checkbox" id="sCeDbl"></div>
+    <div class="field"><label for="sAcTape">AC efface aussi le ruban</label><input type="checkbox" id="sAcTape"></div>
+    <div class="field"><label for="sAcMem">AC vide aussi la mémoire</label><input type="checkbox" id="sAcMem"></div>
+    <div class="actions">
+      <button type="button" id="bClearTape">Effacer le ruban</button>
+      <button type="button" id="bClearMem">Vider la mémoire</button>
+      <button type="button" id="bReset">Réinitialiser</button>
+    </div>
+    <button class="done" type="button" id="closeSettings">Terminé</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var DEFAULTS = { tax: 8.1, order: 'alg', dec: '2', round: 'std', dsep: ',', thou: 'space', neg: true, size: 'normal', ceDbl: true, acTape: false, acMem: false };
+  var cfg = Object.assign({}, DEFAULTS);
+  try { var saved = JSON.parse(localStorage.getItem('officecalc.cfg') || 'null'); if (saved) cfg = Object.assign(cfg, saved); } catch (e) {}
+  function saveCfg() { try { localStorage.setItem('officecalc.cfg', JSON.stringify(cfg)); } catch (e) {} }
+
+  var S = { entry: '', tokens: [], tape: [], shown: null, fresh: false, mem: 0, err: false, ceT: 0 };
+  var SYM = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- nombres ---------- */
+  function rnd(x) {
+    if (cfg.dec === 'F') return x;
+    var s = Math.pow(10, +cfg.dec), y = +(x * s).toPrecision(14), a = Math.abs(y), r;
+    if (cfg.round === 'up') r = Math.ceil(a); else if (cfg.round === 'down') r = Math.floor(a); else r = Math.round(a);
+    var out = Math.sign(y) * r / s;
+    return out === 0 ? 0 : out;
+  }
+  function group(i) {
+    if (cfg.thou === 'none') return i;
+    var sep = cfg.thou === 'space' ? ' ' : '’';
+    return i.replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+  }
+  function fmt(x) {
+    if (x === null || x === undefined) return '';
+    if (Object.is(x, -0)) x = 0;
+    var s;
+    if (cfg.dec === 'F') { s = String(+x.toPrecision(12)); if (/e/i.test(s)) s = x.toFixed(6); } else s = x.toFixed(+cfg.dec);
+    var neg = s[0] === '-'; if (neg) s = s.slice(1);
+    var p = s.split('.');
+    return (neg ? '-' : '') + group(p[0]) + (p[1] !== undefined ? cfg.dsep + p[1] : '');
+  }
+  function fmtEntry(str) {
+    var neg = str[0] === '-'; if (neg) str = str.slice(1);
+    var p = str.split('.');
+    return (neg ? '-' : '') + group(p[0]) + (p.length > 1 ? cfg.dsep + p[1] : '');
+  }
+  function parseEntry() { return Number(S.entry); }
+
+  /* ---------- évaluation ---------- */
+  function apply(a, op, b) {
+    if (op === '+') return a + b;
+    if (op === '-') return a - b;
+    if (op === '*') return a * b;
+    if (b === 0) throw new Error('div0');
+    return a / b;
+  }
+  function evalSeq(t, i) {
+    var vals = [], ops = [];
+    while (i < t.length) {
+      var x = t[i];
+      if (x === ')') { i++; break; }
+      if (x === '(') { var r = evalSeq(t, i + 1); vals.push(r[0]); i = r[1]; continue; }
+      if (typeof x === 'number') { vals.push(x); i++; continue; }
+      ops.push(x); i++;
+    }
+    var k, v, res;
+    if (cfg.order === 'alg') {
+      var v2 = [], o2 = [];
+      v = vals[0];
+      for (k = 0; k < ops.length; k++) {
+        if (ops[k] === '*' || ops[k] === '/') v = apply(v, ops[k], vals[k + 1]);
+        else { v2.push(v); o2.push(ops[k]); v = vals[k + 1]; }
+      }
+      v2.push(v);
+      res = v2[0];
+      for (k = 0; k < o2.length; k++) res = apply(res, o2[k], v2[k + 1]);
+    } else {
+      res = vals[0];
+      for (k = 0; k < ops.length; k++) res = apply(res, ops[k], vals[k + 1]);
+    }
+    return [res === undefined ? 0 : res, i];
+  }
+
+  /* ---------- actions ---------- */
+  function isOp(x) { return x === '+' || x === '-' || x === '*' || x === '/'; }
+  function lastTok() { return S.tokens[S.tokens.length - 1]; }
+  function lastLine() { for (var i = S.tape.length - 1; i >= 0; i--) if (S.tape[i].k === 'line') return S.tape[i]; return null; }
+  function pushNum(n) {
+    var l = lastTok();
+    if (l === ')') S.tokens.push('*');
+    S.tokens.push(n);
+  }
+  function startNew() { if (S.fresh) { S.fresh = false; S.tokens = []; S.entry = ''; } }
+  function removePending() { while (S.tape.length && (S.tape[S.tape.length - 1].k === 'line' || S.tape[S.tape.length - 1].k === 'note')) S.tape.pop(); }
+  function ac() {
+    var pending = S.tokens.length || S.entry !== '';
+    S.tokens = []; S.entry = ''; S.shown = null; S.fresh = false;
+    if (cfg.acTape) S.tape = []; else if (pending) removePending();
+    if (cfg.acMem) S.mem = 0;
+  }
+  function digit(d) {
+    startNew();
+    if (S.entry === '0' || S.entry === '-0') S.entry = S.entry.slice(0, -1);
+    if (d === '00' && (S.entry === '' || S.entry === '-')) d = '0';
+    if (S.entry.replace(/[-.]/g, '').length >= 15) return;
+    S.entry += d;
+    if (S.entry === '' ) S.entry = '0';
+  }
+  function decimal() {
+    startNew();
+    if (S.entry.indexOf('.') >= 0) return;
+    S.entry = (S.entry === '' ? '0' : S.entry === '-' ? '-0' : S.entry) + '.';
+  }
+  function operator(op) {
+    var l = lastTok(), n;
+    if (S.fresh) { S.fresh = false; S.tokens = []; S.tokens.push(S.shown || 0); S.tape.push({ k: 'line', n: S.shown || 0, b: SYM[op] }); S.tokens.push(op); return; }
+    if (S.entry !== '') {
+      n = rnd(parseEntry()); pushNum(n);
+      S.tape.push({ k: 'line', n: n, b: SYM[op] });
+      S.tokens.push(op); S.shown = n; S.entry = ''; return;
+    }
+    if (S.tokens.length === 0) {
+      n = S.shown || 0; S.tokens.push(n); S.tape.push({ k: 'line', n: n, b: SYM[op] }); S.tokens.push(op); return;
+    }
+    if (isOp(l)) { S.tokens[S.tokens.length - 1] = op; var tl = lastLine(); if (tl) tl.b = SYM[op]; return; }
+    if (l === ')') { S.tokens.push(op); S.tape.push({ k: 'line', n: null, b: SYM[op] }); }
+  }
+  function openParen() {
+    var n, l;
+    if (S.fresh) { S.fresh = false; S.tokens = []; }
+    if (S.entry !== '') {
+      n = rnd(parseEntry()); pushNum(n); S.tape.push({ k: 'line', n: n, b: '×' }); S.tokens.push('*'); S.entry = '';
+    } else {
+      l = lastTok();
+      if (l === ')' || typeof l === 'number') { S.tokens.push('*'); S.tape.push({ k: 'line', n: null, b: '×' }); }
+    }
+    S.tokens.push('('); S.tape.push({ k: 'line', n: null, b: '(' });
+  }
+  function closeParen() {
+    var opens = S.tokens.filter(function (x) { return x === '('; }).length - S.tokens.filter(function (x) { return x === ')'; }).length;
+    if (opens <= 0) return;
+    var l = lastTok(), n;
+    if (S.entry !== '') { n = rnd(parseEntry()); pushNum(n); S.tape.push({ k: 'line', n: n, b: ')' }); S.shown = n; S.entry = ''; }
+    else if (isOp(l) || l === '(') return;
+    else S.tape.push({ k: 'line', n: null, b: ')' });
+    S.tokens.push(')');
+  }
+  function equals() {
+    if (S.entry === '' && S.tokens.length === 0) return;
+    var n, l, tl;
+    if (S.entry !== '') {
+      n = rnd(parseEntry()); pushNum(n); S.tape.push({ k: 'line', n: n, b: '' }); S.entry = '';
+    } else {
+      while (S.tokens.length && (isOp(lastTok()) || lastTok() === '(')) {
+        l = S.tokens.pop(); tl = lastLine();
+        if (l === '(') S.tape.splice(S.tape.lastIndexOf(tl), 1); else if (tl) tl.b = '';
+      }
+    }
+    var opens = S.tokens.filter(function (x) { return x === '('; }).length - S.tokens.filter(function (x) { return x === ')'; }).length;
+    while (opens-- > 0) S.tokens.push(')');
+    if (!S.tokens.length) return;
+    var res;
+    try { res = rnd(evalSeq(S.tokens, 0)[0]); } catch (e) { fail(); return; }
+    S.tape.push({ k: 'total', n: res });
+    S.shown = res; S.tokens = []; S.fresh = true;
+  }
+  function fail() { S.err = true; S.tokens = []; S.entry = ''; S.shown = null; S.fresh = false; S.tape.push({ k: 'note', lab: 'Erreur', n: null }); }
+  function base() { return S.entry !== '' ? rnd(parseEntry()) : (S.shown || 0); }
+  function tax(sign) {
+    var b = base(), r = cfg.tax / 100, lab = 'TVA ' + String(cfg.tax).replace('.', cfg.dsep) + ' %', t, res;
+    startNew2();
+    if (sign > 0) {
+      res = rnd(b * (1 + r)); t = rnd(res - b);
+      S.tape.push({ k: 'note', lab: 'HT', n: b }, { k: 'note', lab: lab, n: t });
+    } else {
+      res = rnd(b / (1 + r)); t = rnd(b - res);
+      S.tape.push({ k: 'note', lab: 'TTC', n: b }, { k: 'note', lab: lab, n: t });
+    }
+    if (S.tokens.length && !S.fresh) { S.entry = String(res); S.shown = res; return; }
+    S.tape.push({ k: 'total', n: res, lab: sign > 0 ? 'TTC' : 'HT' });
+    S.shown = res; S.entry = ''; S.tokens = []; S.fresh = true;
+  }
+  function startNew2() { /* garde le résultat affiché comme base */ }
+  function percent() {
+    if (S.entry === '') return;
+    var b = parseEntry(), l = lastTok();
+    if (isOp(l) && S.tokens.length >= 2) {
+      var a = S.tokens[S.tokens.length - 2];
+      if (typeof a === 'number') {
+        var v = (l === '+' || l === '-') ? a * b / 100 : b / 100;
+        S.entry = String(+v.toPrecision(14));
+        equals(); return;
+      }
+    }
+    S.entry = String(+(b / 100).toPrecision(14));
+  }
+  function memAdd(sign) {
+    var v = base();
+    S.mem = rnd(S.mem + sign * v);
+    S.tape.push({ k: 'note', lab: sign > 0 ? 'M+' : 'M−', n: v });
+    if (S.entry !== '') { S.shown = v; S.entry = ''; }
+  }
+
+  function press(k) {
+    if (S.err) { S.err = false; if (k === 'ce' || k === 'ac') { render(); return; } }
+    switch (k) {
+      case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': case '00': digit(k); break;
+      case '.': decimal(); break;
+      case '+': case '-': case '*': case '/': operator(k); break;
+      case '(': openParen(); break;
+      case ')': closeParen(); break;
+      case '=': equals(); break;
+      case '%': percent(); break;
+      case 'pm':
+        if (S.entry !== '') S.entry = S.entry[0] === '-' ? S.entry.slice(1) : '-' + S.entry;
+        else if (S.fresh && S.shown !== null) S.shown = -S.shown;
+        else S.entry = '-0';
+        break;
+      case 'tx+': tax(1); break;
+      case 'tx-': tax(-1); break;
+      case 'bs': if (S.entry !== '') S.entry = S.entry.slice(0, -1); if (S.entry === '-') S.entry = ''; break;
+      case 'ce':
+        var now = Date.now(), dbl = cfg.ceDbl && now - S.ceT < 700;
+        S.ceT = now;
+        if (dbl || (S.entry === '' && S.tokens.length === 0)) ac();
+        else if (S.entry !== '') S.entry = '';
+        else { S.tokens = []; S.fresh = false; removePending(); }
+        break;
+      case 'ac': ac(); break;
+      case 'mc': S.mem = 0; break;
+      case 'mr': startNew(); S.entry = String(S.mem); break;
+      case 'm+': memAdd(1); break;
+      case 'm-': memAdd(-1); break;
+    }
+    render();
+  }
+
+  /* ---------- rendu ---------- */
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  function renderTape() {
+    var box = $('tape'), t = S.tape, i, n = 0, groups = [], cnt = 0, idx = 0;
+    box.textContent = '';
+    for (i = 0; i < t.length; i++) {
+      if (t[i].k === 'line') cnt++;
+      if (t[i].k === 'total') { groups.push(cnt); cnt = 0; }
+    }
+    groups.push(cnt);
+    var g = 0;
+    for (i = 0; i < t.length; i++) {
+      var it = t[i], row = el('div', 'row ' + it.k), idxEl, numEl;
+      if (it.k === 'line') {
+        idx++; idxEl = el('span', 'idx', '(' + idx + '/' + groups[g] + ')');
+        numEl = el('span', 'num', fmt(it.n));
+        row.append(idxEl, numEl, el('span', 'op', it.b || ''));
+      } else if (it.k === 'total') {
+        row.append(el('span', 'idx', it.lab ? it.lab + ' =' : '='), el('span', 'num', fmt(it.n)), el('span', 'op', ''));
+        g++; idx = 0;
+      } else {
+        numEl = el('span', 'num', fmt(it.n));
+        row.append(el('span', 'idx', it.lab || ''), numEl, el('span', 'op', ''));
+      }
+      if (cfg.neg && typeof it.n === 'number' && it.n < 0) row.querySelector('.num').classList.add('neg');
+      box.appendChild(row);
+    }
+    box.scrollTop = box.scrollHeight;
+  }
+  function render() {
+    var v = $('value'), txt, num;
+    if (S.err) { txt = 'Erreur'; num = null; }
+    else if (S.entry !== '') { txt = fmtEntry(S.entry); num = parseEntry(); }
+    else { num = S.shown === null ? 0 : S.shown; txt = fmt(num); }
+    v.textContent = txt;
+    v.style.fontSize = txt.length <= 9 ? '2.9rem' : txt.length <= 12 ? '2.3rem' : txt.length <= 15 ? '1.8rem' : '1.4rem';
+    v.classList.toggle('neg', !!(cfg.neg && num !== null && num < 0));
+    var l = lastTok(), opens = S.tokens.filter(function (x) { return x === '('; }).length - S.tokens.filter(function (x) { return x === ')'; }).length;
+    $('pend').textContent = (isOp(l) ? SYM[l] : '') + (opens > 0 ? ' (' + (opens > 1 ? '×' + opens : '') : '');
+    var st = $('status'); st.textContent = '';
+    [['MEM', S.mem !== 0], [S.fresh ? 'RÉSULTAT' : 'ENTRÉE', true], ['DÉC.: ' + (cfg.dec === 'F' ? 'F' : cfg.dec), true],
+     ['ARRONDI: ' + { up: 'UP', std: '5/4', down: 'DOWN' }[cfg.round], true]].forEach(function (a) {
+      var s = el('span', a[1] ? 'on' : '', a[0]); st.appendChild(s);
+    });
+    $('decKey').textContent = cfg.dsep;
+    renderTape();
+  }
+
+  /* ---------- paramètres ---------- */
+  function applySize() { document.documentElement.style.setProperty('--kh', { compact: '52px', normal: '62px', large: '72px' }[cfg.size] || '62px'); }
+  function syncForm() {
+    $('sTax').value = cfg.tax; $('sOrder').value = cfg.order; $('sDec').value = cfg.dec; $('sRound').value = cfg.round;
+    $('sDsep').value = cfg.dsep; $('sThou').value = cfg.thou; $('sNeg').checked = cfg.neg; $('sSize').value = cfg.size;
+    $('sCeDbl').checked = cfg.ceDbl; $('sAcTape').checked = cfg.acTape; $('sAcMem').checked = cfg.acMem;
+  }
+  function bind(id, key, kind) {
+    $(id).addEventListener('change', function () {
+      var e = $(id);
+      cfg[key] = kind === 'bool' ? e.checked : kind === 'num' ? (isFinite(parseFloat(e.value)) ? parseFloat(e.value) : 0) : e.value;
+      saveCfg(); applySize(); render();
+    });
+  }
+  bind('sTax', 'tax', 'num'); bind('sOrder', 'order'); bind('sDec', 'dec'); bind('sRound', 'round');
+  bind('sDsep', 'dsep'); bind('sThou', 'thou'); bind('sNeg', 'neg', 'bool'); bind('sSize', 'size');
+  bind('sCeDbl', 'ceDbl', 'bool'); bind('sAcTape', 'acTape', 'bool'); bind('sAcMem', 'acMem', 'bool');
+  function openSet() { syncForm(); $('overlay').hidden = false; $('closeSettings').focus(); }
+  function closeSet() { $('overlay').hidden = true; $('openSettings').focus(); }
+  $('openSettings').addEventListener('click', openSet);
+  $('closeSettings').addEventListener('click', closeSet);
+  $('overlay').addEventListener('click', function (e) { if (e.target === $('overlay')) closeSet(); });
+  function clearTape() { S.tape = []; render(); }
+  $('arrow').addEventListener('click', function () { var a = $('rowA'), b = $('rowB'); a.hidden = !a.hidden; b.hidden = !b.hidden; });
+  $('bClearTape').addEventListener('click', clearTape);
+  $('bClearMem').addEventListener('click', function () { S.mem = 0; render(); });
+  $('bReset').addEventListener('click', function () { cfg = Object.assign({}, DEFAULTS); saveCfg(); applySize(); syncForm(); render(); });
+
+  /* ---------- entrées ---------- */
+  $('keys').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-k]'); if (b) press(b.getAttribute('data-k'));
+  });
+  var KMAP = { Enter: '=', '=': '=', Backspace: 'bs', Escape: 'ac', Delete: 'ce', ',': '.', '.': '.', '%': '%', '+': '+', '-': '-', '*': '*', '/': '/', '(': '(', ')': ')' };
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!$('overlay').hidden) { if (e.key === 'Escape') closeSet(); return; }
+    var t = e.target && e.target.tagName; if (t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') return;
+    var k = /^[0-9]$/.test(e.key) ? e.key : KMAP[e.key];
+    if (k) { e.preventDefault(); press(k); }
+  });
+
+  applySize();
+  render();
+})();
+</script>
+</body>
+</html>

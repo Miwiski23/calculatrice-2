@@ -1,0 +1,7 @@
+{
+  "appId": "ch.michael.calculatrice",
+  "appName": "Calculatrice",
+  "webDir": "www",
+  "backgroundColor": "#06264d",
+  "android": { "backgroundColor": "#06264d" }
+}

@@ -1,0 +1,12 @@
+CALCULATRICE - fabriquer l'APK Android avec GitHub (gratuit, sans rien installer)
+
+1) Crée un compte gratuit sur github.com (une seule fois).
+2) Clique sur "+" en haut à droite > "New repository". Nom : calculatrice. Laisse "Public" ou "Private", puis "Create repository".
+3) Sur la page du dépôt, clique sur "uploading an existing file".
+4) Décompresse ce zip, ouvre le dossier, sélectionne TOUT son contenu (dont le dossier caché .github) et glisse-le dans la page. Clique "Commit changes".
+   Si le dossier .github n'apparaît pas dans la liste : "Add file" > "Create new file", écris
+   .github/workflows/build-apk.yml comme nom, colle le contenu du fichier build-apk.yml, puis "Commit".
+5) Va dans l'onglet "Actions". Le travail "Compiler l'APK" démarre tout seul (5 à 10 minutes).
+   S'il ne démarre pas : clique sur "Compiler l'APK" à gauche, puis "Run workflow".
+6) Quand il est vert, ouvre-le et télécharge "calculatrice-apk" en bas (un zip qui contient app-debug.apk).
+7) Envoie app-debug.apk par WhatsApp à ton ami et installe-le toi-même : le téléphone demandera d'autoriser l'installation depuis cette source.
